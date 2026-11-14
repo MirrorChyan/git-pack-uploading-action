@@ -1,0 +1,73 @@
+name: MirrorChyan Git Pack Uploading
+description: Upload the snapshot of the checked-out commit to a MirrorChyan pack resource
+author: MirrorChyan
+
+branding:
+  icon: git-commit
+  color: black
+
+inputs:
+  mirrorchyan_rid:
+    description: ID of the MirrorChyan resource, whose update type must be pack
+    required: true
+  upload_token:
+    description: MirrorChyan upload token
+    required: true
+  branch:
+    description: >-
+      Branch the resource tracks. The commit is uploaded only while it is still the tip of this
+      branch on origin, so an outdated or re-run job never publishes an old commit.
+    required: false
+    default: ${{ github.ref_name }}
+  channel:
+    description: stable, beta or alpha
+    required: false
+    default: stable
+  working-directory:
+    description: Path of the checked-out repository
+    required: false
+    default: .
+  release_note:
+    description: Release note of the version; generated from the pushed commits when empty
+    required: false
+    default: ""
+  auto_release_note:
+    description: Generate the release note when release_note is empty
+    required: false
+    default: "true"
+  api_base:
+    description: Base URL of the MirrorChyan API
+    required: false
+    default: https://mirrorchyan.com/api
+  dry_run:
+    description: Build the snapshot and print what would be uploaded, without uploading
+    required: false
+    default: "false"
+
+outputs:
+  skipped:
+    description: true when the commit is no longer the tip of the branch and nothing was uploaded
+    value: ${{ steps.upload.outputs.skipped }}
+  version_name:
+    description: Version name, the committer time of the commit in UTC (%Y%m%d%H%M%S)
+    value: ${{ steps.upload.outputs.version_name }}
+  commit:
+    description: The uploaded commit
+    value: ${{ steps.upload.outputs.commit }}
+
+runs:
+  using: composite
+  steps:
+    - id: upload
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        MC_RID: ${{ inputs.mirrorchyan_rid }}
+        MC_TOKEN: ${{ inputs.upload_token }}
+        MC_BRANCH: ${{ inputs.branch }}
+        MC_CHANNEL: ${{ inputs.channel }}
+        MC_RELEASE_NOTE: ${{ inputs.release_note }}
+        MC_AUTO_RELEASE_NOTE: ${{ inputs.auto_release_note }}
+        MC_API_BASE: ${{ inputs.api_base }}
+        MC_DRY_RUN: ${{ inputs.dry_run }}
+      run: python "${{ github.action_path }}/python/pack_upload.py"
